@@ -1,0 +1,1376 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>From Signals to Qubits | A Quantum Computing Journey</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&family=Syne:wght@400;600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;1,9..40,300&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #020608;
+    --bg2: #060d10;
+    --surface: #0a1a1f;
+    --border: #0e2d35;
+    --accent: #00e5ff;
+    --accent2: #7b2fff;
+    --accent3: #00ff88;
+    --text: #c8dde2;
+    --text-dim: #4a7a85;
+    --text-bright: #eaf6f9;
+    --glow: 0 0 20px rgba(0,229,255,0.15);
+    --glow-strong: 0 0 40px rgba(0,229,255,0.25);
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 17px;
+    line-height: 1.75;
+    overflow-x: hidden;
+  }
+
+  /* ── NOISE OVERLAY ── */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 1000;
+    opacity: 0.4;
+  }
+
+  /* ── CIRCUIT GRID BACKGROUND ── */
+  .circuit-bg {
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(0,229,255,0.025) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,229,255,0.025) 1px, transparent 1px);
+    background-size: 60px 60px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* ── GLOW ORBS ── */
+  .orb {
+    position: fixed;
+    border-radius: 50%;
+    filter: blur(120px);
+    pointer-events: none;
+    z-index: 0;
+  }
+  .orb-1 {
+    width: 500px; height: 500px;
+    background: rgba(0,229,255,0.06);
+    top: -100px; right: -100px;
+    animation: orbFloat 12s ease-in-out infinite;
+  }
+  .orb-2 {
+    width: 400px; height: 400px;
+    background: rgba(123,47,255,0.05);
+    bottom: 20%; left: -100px;
+    animation: orbFloat 16s ease-in-out infinite reverse;
+  }
+  .orb-3 {
+    width: 300px; height: 300px;
+    background: rgba(0,255,136,0.04);
+    top: 50%; right: 10%;
+    animation: orbFloat 20s ease-in-out infinite;
+  }
+
+  @keyframes orbFloat {
+    0%, 100% { transform: translate(0, 0); }
+    33% { transform: translate(30px, -20px); }
+    66% { transform: translate(-20px, 30px); }
+  }
+
+  /* ── LAYOUT ── */
+  .wrapper {
+    position: relative;
+    z-index: 1;
+    max-width: 780px;
+    margin: 0 auto;
+    padding: 0 24px;
+  }
+
+  /* ── NAV ── */
+  nav {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    z-index: 100;
+    padding: 20px 0;
+    background: rgba(2,6,8,0.85);
+    backdrop-filter: blur(20px);
+    border-bottom: 1px solid var(--border);
+  }
+  nav .nav-inner {
+    max-width: 780px;
+    margin: 0 auto;
+    padding: 0 24px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .nav-logo {
+    font-family: 'Space Mono', monospace;
+    font-size: 13px;
+    color: var(--accent);
+    letter-spacing: 0.1em;
+    text-decoration: none;
+  }
+  .nav-logo span { color: var(--text-dim); }
+  .nav-links {
+    display: flex;
+    gap: 28px;
+    list-style: none;
+  }
+  .nav-links a {
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    color: var(--text-dim);
+    text-decoration: none;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    transition: color 0.2s;
+  }
+  .nav-links a:hover { color: var(--accent); }
+
+  /* ── HERO ── */
+  .hero {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding-top: 100px;
+    padding-bottom: 80px;
+  }
+
+  .hero-tag {
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 32px;
+    opacity: 0;
+    animation: fadeUp 0.8s 0.2s forwards;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .hero-tag::before {
+    content: '';
+    width: 40px;
+    height: 1px;
+    background: var(--accent);
+    display: block;
+  }
+
+  h1 {
+    font-family: 'Syne', sans-serif;
+    font-size: clamp(2.8rem, 7vw, 5rem);
+    font-weight: 800;
+    line-height: 1.05;
+    color: var(--text-bright);
+    margin-bottom: 28px;
+    opacity: 0;
+    animation: fadeUp 0.8s 0.4s forwards;
+  }
+  h1 .accent { color: var(--accent); }
+  h1 .accent2 { color: var(--accent2); }
+
+  .hero-sub {
+    font-size: 1.15rem;
+    color: var(--text-dim);
+    max-width: 580px;
+    line-height: 1.8;
+    margin-bottom: 48px;
+    opacity: 0;
+    animation: fadeUp 0.8s 0.6s forwards;
+  }
+
+  .hero-meta {
+    display: flex;
+    gap: 32px;
+    align-items: center;
+    opacity: 0;
+    animation: fadeUp 0.8s 0.8s forwards;
+  }
+  .hero-date {
+    font-family: 'Space Mono', monospace;
+    font-size: 12px;
+    color: var(--text-dim);
+  }
+  .hero-tags {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .tag {
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    padding: 4px 10px;
+    border: 1px solid var(--border);
+    border-radius: 2px;
+    color: var(--text-dim);
+    text-transform: uppercase;
+  }
+  .tag.cyan { border-color: rgba(0,229,255,0.3); color: var(--accent); }
+  .tag.purple { border-color: rgba(123,47,255,0.3); color: var(--accent2); }
+  .tag.green { border-color: rgba(0,255,136,0.3); color: var(--accent3); }
+
+  /* ── SCROLL INDICATOR ── */
+  .scroll-hint {
+    margin-top: 80px;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+    opacity: 0;
+    animation: fadeUp 0.8s 1.2s forwards;
+  }
+  .scroll-line {
+    width: 1px;
+    height: 60px;
+    background: linear-gradient(to bottom, var(--accent), transparent);
+    animation: scrollPulse 2s ease-in-out infinite;
+  }
+  .scroll-text {
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.15em;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    writing-mode: horizontal-tb;
+  }
+
+  @keyframes scrollPulse {
+    0%, 100% { opacity: 0.3; }
+    50% { opacity: 1; }
+  }
+
+  /* ── SECTION DIVIDER ── */
+  .divider {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin: 80px 0 48px;
+  }
+  .divider-num {
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    color: var(--accent);
+    letter-spacing: 0.1em;
+    min-width: 28px;
+  }
+  .divider-line {
+    height: 1px;
+    flex: 1;
+    background: linear-gradient(to right, var(--border), transparent);
+  }
+  .divider-label {
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    color: var(--text-dim);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+  }
+
+  /* ── TYPOGRAPHY ── */
+  h2 {
+    font-family: 'Syne', sans-serif;
+    font-size: clamp(1.6rem, 4vw, 2.4rem);
+    font-weight: 700;
+    color: var(--text-bright);
+    line-height: 1.2;
+    margin-bottom: 24px;
+  }
+  h3 {
+    font-family: 'Syne', sans-serif;
+    font-size: 1.2rem;
+    font-weight: 600;
+    color: var(--text-bright);
+    margin-bottom: 12px;
+    margin-top: 40px;
+  }
+  p { margin-bottom: 20px; }
+  p:last-child { margin-bottom: 0; }
+
+  strong { color: var(--text-bright); font-weight: 600; }
+  em { color: var(--accent); font-style: italic; }
+
+  a { color: var(--accent); text-decoration: none; border-bottom: 1px solid rgba(0,229,255,0.3); transition: border-color 0.2s; }
+  a:hover { border-color: var(--accent); }
+
+  /* ── PULL QUOTE ── */
+  .pull-quote {
+    border-left: 3px solid var(--accent);
+    padding: 24px 32px;
+    margin: 48px 0;
+    background: rgba(0,229,255,0.03);
+    position: relative;
+  }
+  .pull-quote p {
+    font-family: 'Syne', sans-serif;
+    font-size: 1.35rem;
+    font-weight: 600;
+    color: var(--text-bright);
+    line-height: 1.5;
+    margin: 0;
+  }
+  .pull-quote::before {
+    content: '"';
+    position: absolute;
+    top: -10px;
+    left: 24px;
+    font-size: 4rem;
+    color: var(--accent);
+    opacity: 0.3;
+    font-family: serif;
+    line-height: 1;
+  }
+
+  /* ── CODE BLOCK ── */
+  .code-block {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 24px;
+    margin: 32px 0;
+    overflow-x: auto;
+    position: relative;
+  }
+  .code-block::before {
+    content: attr(data-label);
+    position: absolute;
+    top: -1px;
+    left: 20px;
+    transform: translateY(-50%);
+    background: var(--surface);
+    padding: 2px 10px;
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    color: var(--accent);
+    letter-spacing: 0.1em;
+    border: 1px solid var(--border);
+    text-transform: uppercase;
+  }
+  .code-block code {
+    font-family: 'Space Mono', monospace;
+    font-size: 13px;
+    color: #7ecfdb;
+    line-height: 1.7;
+    white-space: pre;
+  }
+  .code-block .kw { color: var(--accent2); }
+  .code-block .fn { color: var(--accent3); }
+  .code-block .cm { color: var(--text-dim); font-style: italic; }
+  .code-block .st { color: #ffb347; }
+
+  /* ── CONCEPT CARDS ── */
+  .card-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin: 40px 0;
+  }
+  @media (max-width: 600px) { .card-grid { grid-template-columns: 1fr; } }
+
+  .concept-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    padding: 24px;
+    position: relative;
+    transition: border-color 0.3s, box-shadow 0.3s;
+    cursor: default;
+  }
+  .concept-card:hover {
+    border-color: rgba(0,229,255,0.3);
+    box-shadow: var(--glow);
+  }
+  .concept-card .card-icon {
+    font-size: 1.8rem;
+    margin-bottom: 12px;
+  }
+  .concept-card h4 {
+    font-family: 'Syne', sans-serif;
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--text-bright);
+    margin-bottom: 8px;
+  }
+  .concept-card p {
+    font-size: 0.9rem;
+    color: var(--text-dim);
+    margin: 0;
+    line-height: 1.6;
+  }
+  .concept-card .card-accent {
+    position: absolute;
+    top: 0; left: 0;
+    width: 3px;
+    height: 100%;
+  }
+  .card-cyan .card-accent { background: var(--accent); }
+  .card-purple .card-accent { background: var(--accent2); }
+  .card-green .card-accent { background: var(--accent3); }
+  .card-orange .card-accent { background: #ff6b35; }
+
+  /* ── COMPARISON TABLE ── */
+  .comparison {
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    overflow: hidden;
+    margin: 40px 0;
+  }
+  .comparison-header {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+  }
+  .comparison-header div {
+    padding: 14px 20px;
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+  .comparison-header .col-q { color: var(--accent); }
+  .comparison-header .col-c { color: var(--text-dim); }
+  .comparison-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    border-bottom: 1px solid var(--border);
+    transition: background 0.2s;
+  }
+  .comparison-row:last-child { border-bottom: none; }
+  .comparison-row:hover { background: rgba(0,229,255,0.02); }
+  .comparison-row div {
+    padding: 14px 20px;
+    font-size: 0.88rem;
+  }
+  .comparison-row .col-label { color: var(--text-dim); font-family: 'Space Mono', monospace; font-size: 11px; }
+  .comparison-row .col-q { color: var(--accent3); }
+  .comparison-row .col-c { color: var(--text-dim); }
+
+  /* ── ALGORITHM SHOWCASE ── */
+  .algo-list {
+    margin: 32px 0;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+  .algo-item {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    gap: 20px;
+    align-items: center;
+    padding: 20px 24px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    transition: border-color 0.3s;
+  }
+  .algo-item:hover { border-color: rgba(0,229,255,0.2); }
+  .algo-num {
+    font-family: 'Space Mono', monospace;
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--border);
+  }
+  .algo-info h4 {
+    font-family: 'Syne', sans-serif;
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--text-bright);
+    margin-bottom: 4px;
+  }
+  .algo-info p {
+    font-size: 0.85rem;
+    color: var(--text-dim);
+    margin: 0;
+  }
+  .algo-speedup {
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    color: var(--accent3);
+    text-align: right;
+    white-space: nowrap;
+  }
+
+  /* ── RESOURCES ── */
+  .resource-list {
+    margin: 32px 0;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .resource-item {
+    display: flex;
+    gap: 16px;
+    align-items: flex-start;
+    padding: 16px 20px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    transition: border-color 0.3s;
+  }
+  .resource-item:hover { border-color: rgba(0,229,255,0.2); }
+  .resource-type {
+    font-family: 'Space Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    padding: 3px 8px;
+    border-radius: 2px;
+    white-space: nowrap;
+    margin-top: 2px;
+  }
+  .type-paper { background: rgba(0,229,255,0.1); color: var(--accent); border: 1px solid rgba(0,229,255,0.2); }
+  .type-tool { background: rgba(0,255,136,0.1); color: var(--accent3); border: 1px solid rgba(0,255,136,0.2); }
+  .type-course { background: rgba(123,47,255,0.1); color: var(--accent2); border: 1px solid rgba(123,47,255,0.2); }
+  .resource-text h4 {
+    font-family: 'Syne', sans-serif;
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--text-bright);
+    margin-bottom: 4px;
+  }
+  .resource-text p {
+    font-size: 0.85rem;
+    color: var(--text-dim);
+    margin: 0;
+  }
+
+  /* ── TIMELINE ── */
+  .timeline {
+    margin: 40px 0;
+    position: relative;
+    padding-left: 32px;
+  }
+  .timeline::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 8px;
+    bottom: 8px;
+    width: 1px;
+    background: linear-gradient(to bottom, var(--accent), var(--accent2), transparent);
+  }
+  .timeline-item {
+    margin-bottom: 36px;
+    position: relative;
+  }
+  .timeline-item::before {
+    content: '';
+    position: absolute;
+    left: -36px;
+    top: 6px;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--accent);
+    box-shadow: 0 0 10px rgba(0,229,255,0.5);
+  }
+  .timeline-week {
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    color: var(--accent);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    margin-bottom: 6px;
+  }
+  .timeline-item h4 {
+    font-family: 'Syne', sans-serif;
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--text-bright);
+    margin-bottom: 6px;
+    margin-top: 0;
+  }
+  .timeline-item p {
+    font-size: 0.88rem;
+    color: var(--text-dim);
+    margin: 0;
+  }
+
+  /* ── EXTC BRIDGE ── */
+  .bridge-box {
+    border: 1px solid rgba(0,229,255,0.2);
+    background: linear-gradient(135deg, rgba(0,229,255,0.04), rgba(123,47,255,0.04));
+    padding: 32px;
+    margin: 40px 0;
+    position: relative;
+    overflow: hidden;
+  }
+  .bridge-box::after {
+    content: 'EXTC → QC';
+    position: absolute;
+    right: -20px;
+    top: 50%;
+    transform: translateY(-50%) rotate(90deg);
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.2em;
+    color: var(--border);
+    text-transform: uppercase;
+  }
+  .bridge-box h3 {
+    font-family: 'Syne', sans-serif;
+    font-size: 1.1rem;
+    color: var(--accent);
+    margin-top: 0;
+    margin-bottom: 20px;
+  }
+  .bridge-row {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    gap: 12px;
+    align-items: center;
+    margin-bottom: 12px;
+  }
+  .bridge-row:last-child { margin-bottom: 0; }
+  .bridge-from {
+    font-family: 'Space Mono', monospace;
+    font-size: 12px;
+    color: var(--text-dim);
+    padding: 8px 12px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    text-align: center;
+  }
+  .bridge-to {
+    font-family: 'Space Mono', monospace;
+    font-size: 12px;
+    color: var(--accent);
+    padding: 8px 12px;
+    background: rgba(0,229,255,0.05);
+    border: 1px solid rgba(0,229,255,0.2);
+    text-align: center;
+  }
+  .bridge-arrow {
+    color: var(--accent2);
+    font-size: 18px;
+    text-align: center;
+  }
+
+  /* ── FUTURE SECTION ── */
+  .future-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 2px;
+    margin: 40px 0;
+    background: var(--border);
+    border: 1px solid var(--border);
+  }
+  .future-cell {
+    padding: 28px 24px;
+    background: var(--bg2);
+    transition: background 0.3s;
+  }
+  .future-cell:hover { background: var(--surface); }
+  .future-cell .future-icon {
+    font-size: 2rem;
+    margin-bottom: 12px;
+  }
+  .future-cell h4 {
+    font-family: 'Syne', sans-serif;
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--text-bright);
+    margin-bottom: 8px;
+  }
+  .future-cell p {
+    font-size: 0.88rem;
+    color: var(--text-dim);
+    margin: 0;
+    line-height: 1.6;
+  }
+  @media (max-width: 600px) { .future-grid { grid-template-columns: 1fr; } }
+
+  /* ── CLOSING CTA ── */
+  .cta-section {
+    margin: 80px 0;
+    text-align: center;
+    padding: 60px 40px;
+    border: 1px solid var(--border);
+    background: linear-gradient(135deg, rgba(0,229,255,0.03), rgba(123,47,255,0.03));
+    position: relative;
+    overflow: hidden;
+  }
+  .cta-section::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(ellipse at center, rgba(0,229,255,0.05) 0%, transparent 70%);
+  }
+  .cta-section h2 {
+    position: relative;
+    margin-bottom: 16px;
+  }
+  .cta-section p {
+    color: var(--text-dim);
+    max-width: 480px;
+    margin: 0 auto 32px;
+    position: relative;
+  }
+  .cta-links {
+    display: flex;
+    gap: 16px;
+    justify-content: center;
+    flex-wrap: wrap;
+    position: relative;
+  }
+  .cta-btn {
+    font-family: 'Space Mono', monospace;
+    font-size: 12px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    padding: 14px 28px;
+    border: none;
+    cursor: pointer;
+    text-decoration: none;
+    transition: all 0.3s;
+    border-bottom: none;
+  }
+  .cta-btn-primary {
+    background: var(--accent);
+    color: var(--bg);
+  }
+  .cta-btn-primary:hover {
+    background: transparent;
+    color: var(--accent);
+    box-shadow: inset 0 0 0 1px var(--accent);
+  }
+  .cta-btn-secondary {
+    background: transparent;
+    color: var(--text-dim);
+    box-shadow: inset 0 0 0 1px var(--border);
+  }
+  .cta-btn-secondary:hover {
+    color: var(--text-bright);
+    box-shadow: inset 0 0 0 1px var(--text-dim);
+  }
+
+  /* ── FOOTER ── */
+  footer {
+    border-top: 1px solid var(--border);
+    padding: 40px 0;
+    margin-top: 40px;
+  }
+  footer .foot-inner {
+    max-width: 780px;
+    margin: 0 auto;
+    padding: 0 24px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 16px;
+  }
+  .foot-left {
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    color: var(--text-dim);
+  }
+  .foot-right {
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    color: var(--text-dim);
+  }
+
+  /* ── READING PROGRESS ── */
+  #progress-bar {
+    position: fixed;
+    top: 0; left: 0;
+    height: 2px;
+    background: linear-gradient(to right, var(--accent), var(--accent2));
+    z-index: 200;
+    width: 0%;
+    transition: width 0.1s;
+  }
+
+  /* ── ANIMATIONS ── */
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .reveal {
+    opacity: 0;
+    transform: translateY(24px);
+    transition: opacity 0.7s ease, transform 0.7s ease;
+  }
+  .reveal.visible {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  /* ── HIGHLIGHT ── */
+  mark {
+    background: rgba(0,229,255,0.12);
+    color: var(--accent);
+    padding: 1px 4px;
+    border-radius: 2px;
+  }
+
+  /* ── INLINE CODE ── */
+  code {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.85em;
+    color: var(--accent3);
+    background: rgba(0,255,136,0.08);
+    padding: 2px 6px;
+    border-radius: 2px;
+  }
+
+  /* ── QUBIT VIZ ── */
+  .qubit-demo {
+    display: flex;
+    gap: 20px;
+    align-items: center;
+    justify-content: center;
+    margin: 40px 0;
+    flex-wrap: wrap;
+  }
+  .qubit-box {
+    text-align: center;
+  }
+  .qubit-circle {
+    width: 100px;
+    height: 100px;
+    border-radius: 50%;
+    border: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 12px;
+    font-family: 'Space Mono', monospace;
+    font-size: 1.4rem;
+    position: relative;
+    overflow: hidden;
+  }
+  .qubit-circle::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+  }
+  .q-zero { border-color: rgba(0,229,255,0.4); color: var(--accent); }
+  .q-zero::before { background: radial-gradient(circle, rgba(0,229,255,0.1) 0%, transparent 70%); }
+  .q-one { border-color: rgba(123,47,255,0.4); color: var(--accent2); }
+  .q-one::before { background: radial-gradient(circle, rgba(123,47,255,0.1) 0%, transparent 70%); }
+  .q-super { border-color: rgba(0,255,136,0.4); color: var(--accent3); animation: superPulse 2s ease-in-out infinite; }
+  .q-super::before { background: radial-gradient(circle, rgba(0,255,136,0.1) 0%, transparent 70%); }
+  @keyframes superPulse {
+    0%, 100% { box-shadow: 0 0 10px rgba(0,255,136,0.1); }
+    50% { box-shadow: 0 0 30px rgba(0,255,136,0.3); }
+  }
+  .qubit-label {
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    color: var(--text-dim);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+  .qubit-arrow {
+    font-size: 1.5rem;
+    color: var(--border);
+  }
+</style>
+</head>
+<body>
+
+<div id="progress-bar"></div>
+<div class="circuit-bg"></div>
+<div class="orb orb-1"></div>
+<div class="orb orb-2"></div>
+<div class="orb orb-3"></div>
+
+<!-- NAV -->
+<nav>
+  <div class="nav-inner">
+    <a href="#" class="nav-logo">QC<span>/</span>JOURNAL</a>
+    <ul class="nav-links">
+      <li><a href="#what-is-qc">What is QC</a></li>
+      <li><a href="#my-journey">Journey</a></li>
+      <li><a href="#concepts">Concepts</a></li>
+      <li><a href="#resources">Resources</a></li>
+      <li><a href="#future">Future</a></li>
+    </ul>
+  </div>
+</nav>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="wrapper">
+    <div class="hero-tag">Personal Essay · Quantum Computing</div>
+    <h1>From <span class="accent">Signals</span> to<br><span class="accent2">Qubits</span></h1>
+    <p class="hero-sub">
+      An EXTC engineering student's honest account of diving into quantum computing — what it actually is, why it matters, the resources that helped, and why your signals background is a secret weapon.
+    </p>
+    <div class="hero-meta">
+      <span class="hero-date">February 2026</span>
+      <div class="hero-tags">
+        <span class="tag cyan">Quantum Computing</span>
+        <span class="tag purple">Qiskit</span>
+        <span class="tag green">EXTC</span>
+        <span class="tag">Beginner Friendly</span>
+      </div>
+    </div>
+    <div class="scroll-hint">
+      <div class="scroll-line"></div>
+      <span class="scroll-text">Scroll</span>
+    </div>
+  </div>
+</section>
+
+<!-- SECTION 1: WHAT IS QC -->
+<section id="what-is-qc">
+  <div class="wrapper">
+
+    <div class="divider reveal">
+      <span class="divider-num">01</span>
+      <div class="divider-line"></div>
+      <span class="divider-label">What is Quantum Computing</span>
+    </div>
+
+    <h2 class="reveal">Computing at the edge of physical reality</h2>
+
+    <p class="reveal">Classical computers — the one running this page, the one in your phone — work with bits. A bit is always either 0 or 1. Every calculation your laptop has ever done, every video streamed, every message sent, came down to billions of these binary switches flipping on and off.</p>
+
+    <p class="reveal">Quantum computers work differently. Instead of bits, they use <strong>qubits</strong> — and qubits exploit the strange rules of quantum mechanics to do something a classical bit never can: exist in a superposition of 0 and 1 simultaneously, until you look at them.</p>
+
+    <div class="qubit-demo reveal">
+      <div class="qubit-box">
+        <div class="qubit-circle q-zero">|0⟩</div>
+        <span class="qubit-label">Classical 0</span>
+      </div>
+      <div class="qubit-arrow">→</div>
+      <div class="qubit-box">
+        <div class="qubit-circle q-one">|1⟩</div>
+        <span class="qubit-label">Classical 1</span>
+      </div>
+      <div class="qubit-arrow">→</div>
+      <div class="qubit-box">
+        <div class="qubit-circle q-super">α|0⟩<br><small style="font-size:0.5rem">+β|1⟩</small></div>
+        <span class="qubit-label">Qubit (superposition)</span>
+      </div>
+    </div>
+
+    <p class="reveal">This isn't magic — it's physics. Quantum mechanics, the theory describing how particles behave at atomic scales, tells us that particles don't have definite states until measured. A qubit exploits this: before measurement, it's genuinely in both states at once, with some probability of being 0 and some probability of being 1.</p>
+
+    <div class="pull-quote reveal">
+      <p>Quantum computing doesn't make computers faster at the same tasks. It changes the nature of what's computable at all.</p>
+    </div>
+
+    <p class="reveal">Two more quantum phenomena make this powerful: <strong>entanglement</strong> (where two qubits become correlated so measuring one instantly affects the other, no matter how far apart) and <strong>interference</strong> (where quantum states can cancel or amplify each other like waves). Clever algorithms engineer these effects so the right answer becomes overwhelmingly probable when you measure.</p>
+
+    <div class="comparison reveal">
+      <div class="comparison-header">
+        <div>Property</div>
+        <div class="col-q">Quantum</div>
+        <div class="col-c">Classical</div>
+      </div>
+      <div class="comparison-row">
+        <div class="col-label">Basic unit</div>
+        <div class="col-q">Qubit (|0⟩, |1⟩, or both)</div>
+        <div class="col-c">Bit (0 or 1)</div>
+      </div>
+      <div class="comparison-row">
+        <div class="col-label">State space</div>
+        <div class="col-q">2ⁿ simultaneous</div>
+        <div class="col-c">1 state at a time</div>
+      </div>
+      <div class="comparison-row">
+        <div class="col-label">Operations</div>
+        <div class="col-q">Unitary gates (reversible)</div>
+        <div class="col-c">Logic gates (irreversible)</div>
+      </div>
+      <div class="comparison-row">
+        <div class="col-label">Output</div>
+        <div class="col-q">Probabilistic measurement</div>
+        <div class="col-c">Deterministic</div>
+      </div>
+      <div class="comparison-row">
+        <div class="col-label">Key advantage</div>
+        <div class="col-q">Interference + entanglement</div>
+        <div class="col-c">Speed, reliability, scale</div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- SECTION 2: MY JOURNEY -->
+<section id="my-journey">
+  <div class="wrapper">
+
+    <div class="divider reveal">
+      <span class="divider-num">02</span>
+      <div class="divider-line"></div>
+      <span class="divider-label">My Journey</span>
+    </div>
+
+    <h2 class="reveal">Starting from EXTC, landing in quantum</h2>
+
+    <p class="reveal">I study Electronics and Telecommunication Engineering. My days are full of signal processing, Fourier transforms, transfer functions, and circuit analysis. I also code — mostly Python and ML experiments on the side. Quantum computing wasn't in my curriculum. It wasn't even on my radar until recently.</p>
+
+    <p class="reveal">The trigger was straightforward: I wanted an internship in something genuinely cutting-edge, something where being an early mover would actually matter. Quantum computing kept showing up in every "future of tech" conversation. So I decided to actually understand it, not just know the buzzwords.</p>
+
+    <div class="pull-quote reveal">
+      <p>I expected quantum computing to feel alien. What surprised me was how much of it I already knew — just under different names.</p>
+    </div>
+
+    <h3 class="reveal">The EXTC Advantage Nobody Talks About</h3>
+
+    <div class="bridge-box reveal">
+      <h3>Your EXTC knowledge maps directly to quantum mechanics</h3>
+      <div class="bridge-row">
+        <div class="bridge-from">Complex phasors & amplitudes</div>
+        <div class="bridge-arrow">→</div>
+        <div class="bridge-to">Probability amplitudes (α, β)</div>
+      </div>
+      <div class="bridge-row">
+        <div class="bridge-from">Discrete Fourier Transform</div>
+        <div class="bridge-arrow">→</div>
+        <div class="bridge-to">Quantum Fourier Transform</div>
+      </div>
+      <div class="bridge-row">
+        <div class="bridge-from">Constructive / destructive interference</div>
+        <div class="bridge-arrow">→</div>
+        <div class="bridge-to">Amplitude amplification (Grover's)</div>
+      </div>
+      <div class="bridge-row">
+        <div class="bridge-from">Signal-to-noise ratio</div>
+        <div class="bridge-arrow">→</div>
+        <div class="bridge-to">Decoherence and gate fidelity</div>
+      </div>
+      <div class="bridge-row">
+        <div class="bridge-from">Unitary / orthogonal matrices</div>
+        <div class="bridge-arrow">→</div>
+        <div class="bridge-to">Quantum gate operations</div>
+      </div>
+    </div>
+
+    <p class="reveal">When Grover's algorithm clicked for me, it was because I recognised it as <em>constructive interference</em> on the target answer and destructive interference on everything else. That's literally antenna array theory. The moment that connection landed, the whole field opened up.</p>
+
+    <h3 class="reveal">How I Actually Studied (Week by Week)</h3>
+
+    <div class="timeline reveal">
+      <div class="timeline-item">
+        <div class="timeline-week">Week 1</div>
+        <h4>Foundations — bra-ket notation, quantum gates</h4>
+        <p>Read "A Minimal Introduction to Quantum Computing" (arXiv:2504.00995). Short, physics-free, perfect starting point. Built X, H, and CNOT gates in Qiskit and verified outputs by hand.</p>
+      </div>
+      <div class="timeline-item">
+        <div class="timeline-week">Week 2</div>
+        <h4>First algorithms — Deutsch-Jozsa, Bell states</h4>
+        <p>Implemented the first algorithm showing quantum speedup. Saw entanglement in action — measuring one qubit instantly determining another. Built and uploaded first GitHub notebooks.</p>
+      </div>
+      <div class="timeline-item">
+        <div class="timeline-week">Week 3</div>
+        <h4>Grover's, teleportation, BB84 cryptography</h4>
+        <p>Grover's search clicked via the interference analogy. Simulated quantum teleportation and BB84 quantum key distribution with and without an eavesdropper.</p>
+      </div>
+      <div class="timeline-item">
+        <div class="timeline-week">Week 4</div>
+        <h4>QFT, VQE, noise simulation</h4>
+        <p>Implemented the Quantum Fourier Transform — the engine inside Shor's algorithm. Built a basic VQE. Simulated real hardware noise and compared ideal vs noisy Bell states.</p>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- SECTION 3: CORE CONCEPTS -->
+<section id="concepts">
+  <div class="wrapper">
+
+    <div class="divider reveal">
+      <span class="divider-num">03</span>
+      <div class="divider-line"></div>
+      <span class="divider-label">Core Concepts</span>
+    </div>
+
+    <h2 class="reveal">The ideas you need to actually understand QC</h2>
+
+    <p class="reveal">Most introductions either drown you in physics or stay so abstract you can't do anything. Here's what I found to be the minimum viable set of concepts — the ones that actually unlock the algorithms.</p>
+
+    <div class="card-grid reveal">
+      <div class="concept-card card-cyan">
+        <div class="card-accent"></div>
+        <div class="card-icon">🌊</div>
+        <h4>Superposition</h4>
+        <p>A qubit exists in both |0⟩ and |1⟩ simultaneously until measured. The Hadamard gate creates this equal superposition from |0⟩.</p>
+      </div>
+      <div class="concept-card card-purple">
+        <div class="card-accent"></div>
+        <div class="card-icon">🔗</div>
+        <h4>Entanglement</h4>
+        <p>Two qubits become correlated — measuring one instantly determines the other. Created with H + CNOT. The source of quantum's power.</p>
+      </div>
+      <div class="concept-card card-green">
+        <div class="card-accent"></div>
+        <div class="card-icon">〰️</div>
+        <h4>Interference</h4>
+        <p>Quantum amplitudes add and cancel like waves. Algorithms engineer constructive interference on correct answers, destructive on wrong ones.</p>
+      </div>
+      <div class="concept-card card-orange">
+        <div class="card-accent"></div>
+        <div class="card-icon">📏</div>
+        <h4>Measurement</h4>
+        <p>Observing a qubit collapses superposition to 0 or 1 probabilistically. Probability = |amplitude|². The art is maximizing the right answer's probability before measuring.</p>
+      </div>
+    </div>
+
+    <h3 class="reveal">Algorithms I've Implemented</h3>
+
+    <div class="algo-list reveal">
+      <div class="algo-item">
+        <div class="algo-num">01</div>
+        <div class="algo-info">
+          <h4>Deutsch-Jozsa Algorithm</h4>
+          <p>Determines if a function is constant or balanced. Classical: 2ⁿ⁻¹+1 queries. Quantum: exactly 1 query.</p>
+        </div>
+        <div class="algo-speedup">Exponential<br>speedup</div>
+      </div>
+      <div class="algo-item">
+        <div class="algo-num">02</div>
+        <div class="algo-info">
+          <h4>Grover's Search Algorithm</h4>
+          <p>Search an unsorted database of N items. The amplitude amplification trick finds the answer in √N steps.</p>
+        </div>
+        <div class="algo-speedup">Quadratic<br>speedup</div>
+      </div>
+      <div class="algo-item">
+        <div class="algo-num">03</div>
+        <div class="algo-info">
+          <h4>Quantum Fourier Transform</h4>
+          <p>Quantum analogue of the DFT. Runs exponentially faster. Core component of Shor's factoring algorithm.</p>
+        </div>
+        <div class="algo-speedup">Exponential<br>speedup</div>
+      </div>
+      <div class="algo-item">
+        <div class="algo-num">04</div>
+        <div class="algo-info">
+          <h4>BB84 Quantum Cryptography</h4>
+          <p>Quantum key distribution protocol. Any eavesdropper disturbs the quantum states and gets detected — provably secure.</p>
+        </div>
+        <div class="algo-speedup">Information-<br>theoretic secure</div>
+      </div>
+      <div class="algo-item">
+        <div class="algo-num">05</div>
+        <div class="algo-info">
+          <h4>Variational Quantum Eigensolver</h4>
+          <p>Hybrid classical-quantum algorithm for finding ground state energies. The leading approach for near-term quantum hardware.</p>
+        </div>
+        <div class="algo-speedup">NISQ-era<br>practical</div>
+      </div>
+    </div>
+
+    <h3 class="reveal">What Qiskit Code Actually Looks Like</h3>
+
+    <div class="code-block reveal" data-label="Python · Qiskit">
+      <code><span class="cm"># Bell State: the simplest entangled state</span>
+<span class="kw">from</span> qiskit <span class="kw">import</span> QuantumCircuit
+<span class="kw">from</span> qiskit_aer <span class="kw">import</span> AerSimulator
+<span class="kw">from</span> qiskit.visualization <span class="kw">import</span> plot_histogram
+
+<span class="cm"># Build circuit: 2 qubits, 2 classical bits</span>
+qc = <span class="fn">QuantumCircuit</span>(2, 2)
+qc.<span class="fn">h</span>(0)          <span class="cm"># Hadamard: put qubit 0 in superposition</span>
+qc.<span class="fn">cx</span>(0, 1)      <span class="cm"># CNOT: entangle qubit 0 and qubit 1</span>
+qc.<span class="fn">measure</span>([0,1], [0,1])
+
+<span class="cm"># Simulate and visualize</span>
+counts = AerSimulator().<span class="fn">run</span>(qc, shots=1000).<span class="fn">result</span>().<span class="fn">get_counts</span>()
+<span class="fn">plot_histogram</span>(counts)
+<span class="cm"># Output: ~500x '00', ~500x '11' — never '01' or '10'</span>
+<span class="cm"># The qubits are perfectly correlated. That's entanglement.</span></code>
+    </div>
+
+  </div>
+</section>
+
+<!-- SECTION 4: RESOURCES -->
+<section id="resources">
+  <div class="wrapper">
+
+    <div class="divider reveal">
+      <span class="divider-num">04</span>
+      <div class="divider-line"></div>
+      <span class="divider-label">Resources for Beginners</span>
+    </div>
+
+    <h2 class="reveal">What actually helped me learn</h2>
+
+    <p class="reveal">There's a lot of content out there. Most of it assumes either too much physics background or too little mathematical maturity. Here's what I found genuinely useful as an engineering student starting from zero.</p>
+
+    <div class="resource-list reveal">
+      <div class="resource-item">
+        <span class="resource-type type-paper">Paper</span>
+        <div class="resource-text">
+          <h4>A Minimal Introduction to Quantum Computing — arXiv:2504.00995</h4>
+          <p>Written for ML/programming folks. No physics required. Gets you to Deutsch-Jozsa in 20 pages. Start here.</p>
+        </div>
+      </div>
+      <div class="resource-item">
+        <span class="resource-type type-paper">Paper</span>
+        <div class="resource-text">
+          <h4>Quantum Computing Without the Physics — arXiv:1708.03684 (Nannicini)</h4>
+          <p>Short, mathematical, CS-focused. Covers Grover's and Simon's algorithm with full circuit details.</p>
+        </div>
+      </div>
+      <div class="resource-item">
+        <span class="resource-type type-paper">Paper</span>
+        <div class="resource-text">
+          <h4>Quantum Algorithm Implementations for Beginners — arXiv:1804.03719</h4>
+          <p>Surveys 20 algorithms with pseudocode and circuit diagrams. Includes IBM hardware implementation tips.</p>
+        </div>
+      </div>
+      <div class="resource-item">
+        <span class="resource-type type-tool">Tool</span>
+        <div class="resource-text">
+          <h4>Qiskit + IBM Quantum (quantum.ibm.com)</h4>
+          <p>Free Python library for quantum circuits. Run on simulator locally or on real quantum hardware via IBM cloud. Start with Aer simulator.</p>
+        </div>
+      </div>
+      <div class="resource-item">
+        <span class="resource-type type-tool">Tool</span>
+        <div class="resource-text">
+          <h4>Google Colab</h4>
+          <p>Zero setup. Install Qiskit with one pip command, run everything in browser. Best way to start today without any configuration pain.</p>
+        </div>
+      </div>
+      <div class="resource-item">
+        <span class="resource-type type-course">Course</span>
+        <div class="resource-text">
+          <h4>IBM Quantum Learning (learning.quantum.ibm.com)</h4>
+          <p>Structured labs that complement the papers. Free. Goes from basics to real hardware. Best complement to self-study.</p>
+        </div>
+      </div>
+      <div class="resource-item">
+        <span class="resource-type type-course">Video</span>
+        <div class="resource-text">
+          <h4>3Blue1Brown — Essence of Linear Algebra</h4>
+          <p>Visual intuition for vectors, matrices, and transformations. Essential mathematical foundation before diving deep.</p>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- SECTION 5: FUTURE -->
+<section id="future">
+  <div class="wrapper">
+
+    <div class="divider reveal">
+      <span class="divider-num">05</span>
+      <div class="divider-line"></div>
+      <span class="divider-label">Why This Matters</span>
+    </div>
+
+    <h2 class="reveal">The future quantum computing is building toward</h2>
+
+    <p class="reveal">Quantum computing isn't a solution looking for a problem. There are specific, well-defined classes of problems where quantum algorithms provide proven advantages over the best known classical algorithms. These aren't marginal improvements — they're qualitative leaps.</p>
+
+    <div class="future-grid reveal">
+      <div class="future-cell">
+        <div class="future-icon">💊</div>
+        <h4>Drug Discovery</h4>
+        <p>Simulating molecular interactions at quantum scale is classically intractable. Quantum computers can model drug-protein binding directly, potentially cutting drug development timelines from decades to years.</p>
+      </div>
+      <div class="future-cell">
+        <div class="future-icon">🔐</div>
+        <h4>Cryptography</h4>
+        <p>Shor's algorithm breaks RSA encryption. Every government and company is preparing for "Q-Day." Quantum-safe cryptography standards (NIST PQC) are being deployed now.</p>
+      </div>
+      <div class="future-cell">
+        <div class="future-icon">⚡</div>
+        <h4>Optimization</h4>
+        <p>Logistics, supply chains, financial portfolios, traffic routing — these are NP-hard classically. Quantum annealing and QAOA offer promising paths to approximate solutions at scale.</p>
+      </div>
+      <div class="future-cell">
+        <div class="future-icon">🤖</div>
+        <h4>Quantum ML</h4>
+        <p>Quantum kernels and variational circuits can potentially process high-dimensional data exponentially more efficiently. Active research area at every major tech lab.</p>
+      </div>
+      <div class="future-cell">
+        <div class="future-icon">🌡️</div>
+        <h4>Climate & Materials</h4>
+        <p>Designing new materials for solar cells, batteries, and carbon capture requires quantum simulation. The molecules are quantum systems — simulate them quantumly.</p>
+      </div>
+      <div class="future-cell">
+        <div class="future-icon">💹</div>
+        <h4>Finance</h4>
+        <p>Monte Carlo simulations for risk analysis, portfolio optimization, and derivative pricing. Quantum amplitude estimation provides quadratic speedup over classical Monte Carlo.</p>
+      </div>
+    </div>
+
+    <div class="pull-quote reveal">
+      <p>We are at the 1950s moment of quantum computing. The people learning this now are the ones who will build what comes next.</p>
+    </div>
+
+    <p class="reveal">The hardware is still noisy and limited — we're in the NISQ era (Noisy Intermediate-Scale Quantum). But the algorithms exist, the theory is solid, and engineering the hardware is a relentless engineering problem being attacked by IBM, Google, IonQ, QuEra, and dozens of startups with billions in funding. The question isn't <em>if</em> but <em>when</em> — and being technically literate now is the leverage point.</p>
+
+  </div>
+</section>
+
+<!-- CTA -->
+<div class="wrapper">
+  <div class="cta-section reveal">
+    <h2>Want to follow along?</h2>
+    <p>I'm documenting every algorithm, every implementation, and every "aha" moment on GitHub and LinkedIn. All code is open source and beginner-annotated.</p>
+    <div class="cta-links">
+      <a href="#" class="cta-btn cta-btn-primary">View GitHub Portfolio</a>
+      <a href="#" class="cta-btn cta-btn-secondary">Connect on LinkedIn</a>
+    </div>
+  </div>
+</div>
+
+<!-- FOOTER -->
+<footer>
+  <div class="foot-inner">
+    <span class="foot-left">Built with curiosity · February 2026</span>
+    <span class="foot-right">EXTC → Quantum Computing</span>
+  </div>
+</footer>
+
+<script>
+  // Reading progress bar
+  window.addEventListener('scroll', () => {
+    const scrolled = window.scrollY;
+    const total = document.body.scrollHeight - window.innerHeight;
+    document.getElementById('progress-bar').style.width = (scrolled / total * 100) + '%';
+  });
+
+  // Reveal on scroll
+  const reveals = document.querySelectorAll('.reveal');
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        entry.target.classList.add('visible');
+        observer.unobserve(entry.target);
+      }
+    });
+  }, { threshold: 0.1, rootMargin: '0px 0px -60px 0px' });
+
+  reveals.forEach(el => observer.observe(el));
+
+  // Stagger children of card-grid and algo-list
+  document.querySelectorAll('.card-grid, .algo-list, .resource-list, .future-grid').forEach(parent => {
+    parent.querySelectorAll(':scope > *').forEach((child, i) => {
+      child.style.transitionDelay = (i * 0.1) + 's';
+    });
+  });
+</script>
+</body>
+</html>
