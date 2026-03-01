@@ -515,12 +515,7 @@ const QB = (function(){
 
         } else if(mode==='enemy'){
           // Show 50% cells (superposition visible as hint) and 100% (collapsed, revealed)
-          if(cd.prob===50){
-            el.classList.add('s50-p'+p);
-            const ic=document.createElement('div');
-            ic.className='cicon '+cc; ic.textContent='50%';
-            el.appendChild(ic);
-          } else if(cd.prob===100){
+          if(cd.prob===100){
             el.classList.add('s100-p'+p);
             const ic=document.createElement('div');
             ic.className='cicon '+cc; ic.textContent='100%';
